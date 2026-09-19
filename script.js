@@ -1,4 +1,4 @@
-// 1. تحديد رقم الغرفة من الرابط (أو إنشائها تلقائياً)// 1. قراءة رقم الغرفة من الرابط أو إنشاؤه تلقائياً
+// 1. قراءة رقم الغرفة من الرابط أو إنشائه تلقائياً
 const urlParams = new URLSearchParams(window.location.search);
 let roomId = urlParams.get('room');
 
@@ -14,34 +14,32 @@ let currentTurn = "X";
 const cells = document.querySelectorAll('.cell');
 const statusText = document.querySelector('#status') || document.querySelector('h2');
 
-// 2. كود اللعب المحلي (لو شغالين على نفس الجهاز أو بدون نت)
+// إخفاء نافذة الاختيار (Modal) تلقائياً لتظهر الشبكة مباشرة
+function hideModal() {
+    const modal = document.querySelector('.modal') || document.querySelector('#modal') || document.querySelector('.overlay');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
+// 2. كود اللعب عند عدم توفر قاعدة البيانات
 function initLocalGame() {
+    hideModal();
     cells.forEach((cell, index) => {
-        cell.addEventListener('click', () => {
+        cell.onclick = () => {
             if (currentBoard[index] === "") {
                 currentBoard[index] = currentTurn;
                 cell.textContent = currentTurn;
-                
-                // تحديث البيانات في Firebase لو متصل
-                if (window.database && window.dbRef && window.dbSet) {
-                    const roomRef = window.dbRef(window.database, 'rooms/' + roomId);
-                    const nextTurn = currentTurn === 'X' ? 'O' : 'X';
-                    window.dbSet(roomRef, {
-                        board: currentBoard,
-                        turn: nextTurn
-                    });
-                } else {
-                    // التبديل محلياً لو Firebase مش متصل
-                    currentTurn = currentTurn === 'X' ? 'O' : 'X';
-                    if (statusText) statusText.textContent = `دور اللاعب: ${currentTurn}`;
-                }
+                currentTurn = currentTurn === 'X' ? 'O' : 'X';
+                if (statusText) statusText.textContent = `دور اللاعب: ${currentTurn}`;
             }
-        });
+        };
     });
 }
 
-// 3. الربط أونلاين مع Firebase
+// 3. الربط الأونلاين عبر Firebase
 function initOnlineGame() {
+    hideModal();
     if (!window.database || !window.dbRef || !window.dbOnValue) {
         initLocalGame();
         return;
@@ -68,7 +66,6 @@ function initOnlineGame() {
 
     cells.forEach((cell, index) => {
         cell.onclick = () => {
-            // لو اللعب أونلاين مع شخص ثاني
             if (playerRole && currentTurn !== playerRole) {
                 alert("انتظر دورك!");
                 return;
@@ -105,7 +102,15 @@ function updateUI() {
     }
 }
 
-// تشغيل اللعبة فوراً
+// أزرار الاختيار (X أو O) في النافذة القديمة إذا تم الضغط عليها
+document.addEventListener('DOMContentLoaded', () => {
+    const btnX = document.querySelector('#chooseX') || document.querySelectorAll('.modal button')[0];
+    const btnO = document.querySelector('#chooseO') || document.querySelectorAll('.modal button')[1];
+
+    if (btnX) btnX.onclick = () => { playerRole = 'X'; hideModal(); };
+    if (btnO) btnO.onclick = () => { playerRole = 'O'; hideModal(); };
+});
+
 window.addEventListener('load', () => {
     setTimeout(() => {
         if (window.database) {
@@ -113,5 +118,5 @@ window.addEventListener('load', () => {
         } else {
             initLocalGame();
         }
-    }, 500);
+    }, 300);
 });

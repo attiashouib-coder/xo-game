@@ -3,63 +3,43 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>لعبة X O</title>
+<title>XO Final</title>
 <link rel="stylesheet" href="style.css">
+<script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
 
-<div id="chooseModal" class="modal">
-  <div class="modal-box">
-    <h2>اختار انت مين؟</h2>
-    <p>صاحبك هياخد التاني تلقائي</p>
-    <div class="choose">
-      <button class="cx" onclick="pick('X')">X</button>
-      <button class="co" onclick="pick('O')">O</button>
-    </div>
-  </div>
-</div>
-
 <div class="box">
   <h1>❌ XO ⭕</h1>
-  <div class="scores">
-    <div>انت (<span id="mySymbol">-</span>): <b id="myScore">0</b></div>
-    <div>صاحبك (<span id="otherSymbol">-</span>): <b id="otherScore">0</b></div>
+
+  <!-- الشاشة الرئيسية -->
+  <div id="mainMenu">
+    <button class="btn btn-yellow" onclick="startOffline()">العب مع صاحبك 🖱️<br><small>على نفس الجهاز</small></button>
+    <button class="btn btn-white" onclick="showOnlineMenu()">العب اونلاين مع يوزر 📱<br><small>انت على الكمبيوتر وهو على الموبايل</small></button>
   </div>
-  <div id="round">الجولة 1 من 5</div>
-  <div class="turn" id="turnText">اختار X او O الاول</div>
-  <div class="grid" id="grid"></div>
-  <div class="btns">
-    <button class="btn btn-next" id="nextBtn" onclick="nextRound()">الجولة الجاية ➡️</button>
-    <button class="btn btn-reset" onclick="resetAll()">إعادة 🔄</button>
+
+  <!-- قائمة الاونلاين -->
+  <div id="onlineLobby" style="display:none">
+    <p>اونلاين مع يوزر</p>
+    <button class="btn btn-yellow" onclick="createRoom()">إنشاء غرفة جديدة ➕</button>
+    <p>--- او ---</p>
+    <input id="roomInput" placeholder="اكتب كود الغرفة">
+    <button class="btn btn-white" onclick="joinRoom()">دخول الغرفة 🚪</button>
+    <p id="myIdText" style="display:none">كودك: <b id="roomCode" style="color:#ffe600;font-size:30px"></b><br><small>ابعت الكود ده للي هتلعب معاه على الواتساب</small></p>
+    <button class="btn btn-back" onclick="backToMain()">رجوع</button>
+  </div>
+
+  <!-- مكان اللعب -->
+  <div id="gameArea" style="display:none">
+    <div id="info">الغرفة: <b id="roomCodeGame"></b> | انت: <b id="mySym"></b></div>
+    <div id="status" class="status">...</div>
+    <div id="roundInfo"></div>
+    <div class="grid" id="grid"></div>
+    <div id="score"></div>
+    <button class="btn btn-white" onclick="location.reload()">خروج 🔄</button>
   </div>
 </div>
 
 <script src="script.js"></script>
-<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyD7NPeQKsL6Z2N_TyL5sXhzIJTBn0-oYao",
-    authDomain: "xo-game-d420a.firebaseapp.com",
-    databaseURL: "https://xo-game-d420a-default-rtdb.firebaseio.com",
-    projectId: "xo-game-d420a",
-    storageBucket: "xo-game-d420a.firebasestorage.app",
-    messagingSenderId: "67529875245",
-    appId: "1:67529875245:web:e1daf0c79a872607b0fda4"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
-const database = getDatabase(app);
-window.database = database;
-window.dbRef = ref;
-window.dbSet = set;
-window.dbOnValue = onValue;
-</script>
 </body>
 </html>

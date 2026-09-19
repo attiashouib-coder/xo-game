@@ -3,43 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>XO Final</title>
-<link rel="stylesheet" href="style.css">
+<title>XO مع بابا</title>
 <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@800&display=swap');
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:linear-gradient(135deg,#667eea,#764ba2);font-family:'Cairo';display:flex;justify-content:center;align-items:center;color:#fff}
+.box{width:380px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-radius:24px;padding:18px;border:3px solid #fff;text-align:center}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 0}
+.cell{height:95px;background:#fff;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:48px;font-weight:900;cursor:pointer}
+.cell.x{color:#e74c3c}.cell.o{color:#3498db}
+.cell.win{background:#2ecc71!important;color:#fff!important}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-family:'Cairo';font-weight:800;cursor:pointer;margin-top:10px}
+.btn-yellow{background:#ffe600}.btn-white{background:#fff;color:#764ba2}
+#status{background:#fff;color:#764ba2;padding:8px;border-radius:50px;font-weight:800;margin:10px 0}
+input{width:100%;padding:14px;border-radius:12px;border:none;text-align:center;font-weight:800;font-size:22px;letter-spacing:5px}
+</style>
 </head>
 <body>
-
 <div class="box">
-  <h1>❌ XO ⭕</h1>
-
-  <!-- الشاشة الرئيسية -->
-  <div id="mainMenu">
-    <button class="btn btn-yellow" onclick="startOffline()">العب مع صاحبك 🖱️<br><small>على نفس الجهاز</small></button>
-    <button class="btn btn-white" onclick="showOnlineMenu()">العب اونلاين مع يوزر 📱<br><small>انت على الكمبيوتر وهو على الموبايل</small></button>
-  </div>
-
-  <!-- قائمة الاونلاين -->
-  <div id="onlineLobby" style="display:none">
-    <p>اونلاين مع يوزر</p>
-    <button class="btn btn-yellow" onclick="createRoom()">إنشاء غرفة جديدة ➕</button>
-    <p>--- او ---</p>
-    <input id="roomInput" placeholder="اكتب كود الغرفة">
-    <button class="btn btn-white" onclick="joinRoom()">دخول الغرفة 🚪</button>
-    <p id="myIdText" style="display:none">كودك: <b id="roomCode" style="color:#ffe600;font-size:30px"></b><br><small>ابعت الكود ده للي هتلعب معاه على الواتساب</small></p>
-    <button class="btn btn-back" onclick="backToMain()">رجوع</button>
-  </div>
-
-  <!-- مكان اللعب -->
-  <div id="gameArea" style="display:none">
-    <div id="info">الغرفة: <b id="roomCodeGame"></b> | انت: <b id="mySym"></b></div>
-    <div id="status" class="status">...</div>
-    <div id="roundInfo"></div>
-    <div class="grid" id="grid"></div>
-    <div id="score"></div>
-    <button class="btn btn-white" onclick="location.reload()">خروج 🔄</button>
-  </div>
+<h1>❌ XO ⭕</h1>
+<div id="mainMenu">
+<button class="btn btn-yellow" onclick="startOffline()">العب مع صاحبك 🖱️</button>
+<button class="btn btn-white" onclick="showOnline()">العب اونلاين 📱</button>
 </div>
-
-<script src="script.js"></script>
+<div id="onlineLobby" style="display:none">
+<button class="btn btn-yellow" onclick="createRoom()">إنشاء غرفة ➕</button>
+<input id="roomInput" placeholder="كود الغرفة" style="margin-top:10px">
+<button class="btn btn-white" onclick="joinRoom()">دخول 🚪</button>
+<p id="myIdText" style="display:none">كودك: <b id="roomCode" style="color:#ffe600;font-size:32px"></b></p>
+<button class="btn btn-white" onclick="location.reload()">رجوع</button>
+</div>
+<div id="gameArea" style="display:none">
+<div id="info"></div><div id="status">...</div>
+<div class="grid" id="grid"></div>
+<div id="score"></div>
+<button class="btn btn-white" onclick="location.reload()">خروج</button>
+</div>
+</div>
+<script>
+let board=["","","","","","","","",""], mySymbol='X', turn='X', over=false, mode='offline', myScore=0, otherScore=0, peer=null, conn=null;
+const grid=document.getElementById('grid'), statusEl=document.getElementById('status'), scoreEl=document.getElementById('score');
+function showOnline(){mainMenu.style.display='none';onlineLobby.style.display='block';}
+function startOffline(){mode='offline';mainMenu.style.display='none';gameArea.style.display='block';info.innerText='اوفلاين';reset();}
+function reset(){board=["","","","","","","","",""];over=false;turn='X';build();}
+function build(){grid.innerHTML='';for(let i=0;i<9;i++){let d=document.createElement('div');d.className='cell';d.id='c'+i;d.onclick=()=>clickCell(i);grid.appendChild(d);} render(); update();}
+function clickCell(i){mode==='offline'?offlinePlay(i):onlinePlay(i);}
+function offlinePlay(i){if(board[i]!=''||over)return;board[i]=turn;render();let w=win(board);if(w){w.c.forEach(j=>document.getElementById('c'+j).classList.add('win'));statusEl.textContent='كسب: '+w.w;over=true;setTimeout(reset,1500);return;}if(board.every(x=>x!='')){statusEl.textContent='تعادل';over=true;setTimeout(reset,1200);return;}turn=turn=='X'?'O':'X';update();}
+function render(){for(let i=0;i<9;i++){let c=document.getElementById('c'+i);c.textContent=board[i];c.className='cell '+(board[i]?board[i].toLowerCase():'');}}
+function update(){statusEl.textContent='دور: '+turn; scoreEl.textContent=`X: ${myScore} | O: ${otherScore}`;}
+function win(b){const l=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];for(let x of l){if(b[x[0]]&&b[x[0]]==b[x[1]]&&b[x[0]]==b[x[2]])return{w:b[x[0]],c:x};}return null;}
+function createRoom(){let id=Math.floor(1000+Math.random()*9000).toString();mode='online';mySymbol='X';turn='X';peer=new Peer('xo-'+id);peer.on('open',()=>{myIdText.style.display='block';roomCode.textContent=id;onlineLobby.style.display='none';gameArea.style.display='block';info.innerHTML='كودك: '+id+' | انت X';statusEl.textContent='مستني...';build();});peer.on('connection',c=>{conn=c;setup();});}
+function joinRoom(){let code=roomInput.value.trim();if(!code)return alert('اكتب الكود');mode='online';mySymbol='O';peer=new Peer();peer.on('open',()=>{conn=peer.connect('xo-'+code);onlineLobby.style.display='none';gameArea.style.display='block';info.textContent='غرفة '+code+' | انت O';build();setup();});}
+function setup(){conn.on('open',()=>{statusEl.textContent=mySymbol=='X'?'دورك':'دور التاني';conn.send({board,turn,ms:myScore,os:otherScore});});conn.on('data',d=>{board=d.board;turn=d.turn;myScore=d.os;otherScore=d.ms;render();let w=win(board);if(w){w.c.forEach(j=>document.getElementById('c'+j).classList.add('win'));over=true;statusEl.textContent=w.w==mySymbol?'كسبت 🎉':'خسرت';setTimeout(()=>{board=["","","","","","","","",""];over=false;build();if(mySymbol=='X')conn.send({board,turn:'X',ms:myScore,os:otherScore});},2000);return;}statusEl.textContent=turn==mySymbol?`دورك (${mySymbol})`:`دور التاني (${turn})`;});}
+function onlinePlay(i){if(board[i]!=''||over||turn!=mySymbol)return;board[i]=mySymbol;let w=win(board);if(w){w.c.forEach(j=>document.getElementById('c'+j).classList.add('win'));myScore++;over=true;}turn=mySymbol=='X'?'O':'X';render();if(conn)conn.send({board,turn,ms:myScore,os:otherScore});if(over)setTimeout(()=>{board=["","","","","","","","",""];over=false;build();conn.send({board,turn:'X',ms:myScore,os:otherScore});},2000);}
+</script>
 </body>
 </html>

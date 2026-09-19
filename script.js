@@ -1,85 +1,117 @@
-let mySymbol='', otherSymbol='', currentTurn='', myScore=0, otherScore=0, round=1, maxRounds=5, gameOver=false, board=["","","","","","","","",""];
-const grid=document.getElementById('grid'), turnText=document.getElementById('turnText'), nextBtn=document.getElementById('nextBtn');
+// 1. تحديد رقم الغرفة من الرابط (أو إنشائها تلقائياً)// 1. قراءة رقم الغرفة من الرابط أو إنشاؤه تلقائياً
+const urlParams = new URLSearchParams(window.location.search);
+let roomId = urlParams.get('room');
 
-function buildGrid(){
-  grid.innerHTML='';
-  for(let i=0;i<9;i++){
-    let c=document.createElement('div');
-    c.className='cell'; c.id='c'+i;
-    c.onclick=()=>play(i);
-    grid.appendChild(c);
-  }
-}
-buildGrid();
-
-function pick(sym){
-  mySymbol=sym; otherSymbol= sym==='X'?'O':'X';
-  document.getElementById('mySymbol').textContent=mySymbol;
-  document.getElementById('otherSymbol').textContent=otherSymbol;
-  document.getElementById('chooseModal').style.display='none';
-  currentTurn = (round%2===1)? mySymbol : otherSymbol;
-  updateTurn();
+if (!roomId) {
+    roomId = Math.floor(1000 + Math.random() * 9000);
+    window.history.pushState({}, '', `?room=${roomId}`);
 }
 
-function updateTurn(){
-  if(gameOver) return;
-  let who = (currentTurn===mySymbol) ? 'انت' : 'صاحبك';
-  turnText.textContent=`الدور على: ${who} (${currentTurn}) - الجولة ${round}`;
-  document.getElementById('round').textContent=`الجولة ${round} من ${maxRounds} | النتيجة ${myScore} - ${otherScore}`;
+let playerRole = null;
+let currentBoard = ["", "", "", "", "", "", "", "", ""];
+let currentTurn = "X";
+
+const cells = document.querySelectorAll('.cell');
+const statusText = document.querySelector('#status') || document.querySelector('h2');
+
+// 2. كود اللعب المحلي (لو شغالين على نفس الجهاز أو بدون نت)
+function initLocalGame() {
+    cells.forEach((cell, index) => {
+        cell.addEventListener('click', () => {
+            if (currentBoard[index] === "") {
+                currentBoard[index] = currentTurn;
+                cell.textContent = currentTurn;
+                
+                // تحديث البيانات في Firebase لو متصل
+                if (window.database && window.dbRef && window.dbSet) {
+                    const roomRef = window.dbRef(window.database, 'rooms/' + roomId);
+                    const nextTurn = currentTurn === 'X' ? 'O' : 'X';
+                    window.dbSet(roomRef, {
+                        board: currentBoard,
+                        turn: nextTurn
+                    });
+                } else {
+                    // التبديل محلياً لو Firebase مش متصل
+                    currentTurn = currentTurn === 'X' ? 'O' : 'X';
+                    if (statusText) statusText.textContent = `دور اللاعب: ${currentTurn}`;
+                }
+            }
+        });
+    });
 }
 
-function play(i){
-  if(board[i]!=='' || gameOver) return;
-  board[i]=currentTurn;
-  let cell=document.getElementById('c'+i);
-  cell.textContent=currentTurn;
-  cell.classList.add(currentTurn.toLowerCase());
-  
-  let win = checkWin();
-  if(win){
-    gameOver=true;
-    win.combo.forEach(j=>document.getElementById('c'+j).classList.add('win'));
-    if(win.winner===mySymbol){myScore++; turnText.textContent=`🏆 انت كسبت الجولة دي!`; }
-    else{otherScore++; turnText.textContent=`🏆 صاحبك كسب الجولة دي!`; }
-    document.getElementById('myScore').textContent=myScore;
-    document.getElementById('otherScore').textContent=otherScore;
-    if(round>=maxRounds) endMatch(); else nextBtn.style.display='block';
-    return;
-  }
-  if(board.every(v=>v!=='')){
-    gameOver=true; turnText.textContent='🤝 تعادل في الجولة دي!';
-    if(round>=maxRounds) endMatch(); else nextBtn.style.display='block';
-    return;
-  }
-  currentTurn = currentTurn==='X'?'O':'X';
-  updateTurn();
+// 3. الربط أونلاين مع Firebase
+function initOnlineGame() {
+    if (!window.database || !window.dbRef || !window.dbOnValue) {
+        initLocalGame();
+        return;
+    }
+
+    const roomRef = window.dbRef(window.database, 'rooms/' + roomId);
+
+    window.dbOnValue(roomRef, (snapshot) => {
+        const data = snapshot.val();
+
+        if (!data) {
+            playerRole = 'X';
+            window.dbSet(roomRef, {
+                board: ["", "", "", "", "", "", "", "", ""],
+                turn: "X"
+            });
+        } else {
+            if (!playerRole) playerRole = 'O';
+            currentBoard = data.board || ["", "", "", "", "", "", "", "", ""];
+            currentTurn = data.turn || "X";
+            updateUI();
+        }
+    });
+
+    cells.forEach((cell, index) => {
+        cell.onclick = () => {
+            // لو اللعب أونلاين مع شخص ثاني
+            if (playerRole && currentTurn !== playerRole) {
+                alert("انتظر دورك!");
+                return;
+            }
+
+            if (currentBoard[index] !== "") return;
+
+            currentBoard[index] = playerRole || currentTurn;
+            const nextTurn = (playerRole || currentTurn) === 'X' ? 'O' : 'X';
+
+            window.dbSet(roomRef, {
+                board: currentBoard,
+                turn: nextTurn
+            });
+        };
+    });
 }
 
-function checkWin(){
-  const combos=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-  for(let c of combos){ if(board[c[0]] && board[c[0]]===board[c[1]] && board[c[0]]===board[c[2]]) return {winner:board[c[0]], combo:c}; }
-  return null;
+function updateUI() {
+    cells.forEach((cell, index) => {
+        cell.textContent = currentBoard[index];
+    });
+
+    if (statusText) {
+        if (playerRole) {
+            if (currentTurn === playerRole) {
+                statusText.textContent = `دورك الآن (${playerRole})`;
+            } else {
+                statusText.textContent = `في انتظار حركة المنافس (${currentTurn})...`;
+            }
+        } else {
+            statusText.textContent = `دور اللاعب: ${currentTurn}`;
+        }
+    }
 }
 
-function nextRound(){
-  round++; board=["","","","","","","","",""]; gameOver=false; nextBtn.style.display='none';
-  buildGrid();
-  currentTurn = (round%2===1)? mySymbol : otherSymbol;
-  updateTurn();
-}
-
-function endMatch(){
-  nextBtn.style.display='none';
-  setTimeout(()=>{
-    let msg = myScore>otherScore? `🏆 انت البطل! ${myScore} - ${otherScore}` : otherScore>myScore? `🏆 صاحبك البطل! ${otherScore} - ${myScore}` : `🤝 تعادل كبير ${myScore} - ${otherScore}`;
-    turnText.textContent=msg;
-  },300);
-}
-
-function resetAll(){
-  myScore=0; otherScore=0; round=1; board=["","","","","","","","",""]; gameOver=false;
-  document.getElementById('myScore').textContent=0; document.getElementById('otherScore').textContent=0;
-  nextBtn.style.display='none'; buildGrid();
-  document.getElementById('chooseModal').style.display='flex';
-  turnText.textContent='اختار X او O الاول';
-}
+// تشغيل اللعبة فوراً
+window.addEventListener('load', () => {
+    setTimeout(() => {
+        if (window.database) {
+            initOnlineGame();
+        } else {
+            initLocalGame();
+        }
+    }, 500);
+});
